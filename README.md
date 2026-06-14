@@ -137,9 +137,20 @@ qf_reference_image: examples/target_reference.jpg
 
 When `qf_reference_image` is set, the code extracts the luminance and chrominance quantization tables from that image and uses them for the whole training run.
 
-## YFCC100M / Flickr Images
+## YFCC100M / Flickr Images (operational camera bases)
 
-`Data/flickr_yyc100m_images.txt` is reserved for the list of Flickr images from YFCC100M used in the operational experiments of the paper. The list is provided separately so that users can reconstruct the same image subset if they want to rerun the full data generation pipeline.
+The paper's operational experiments use three camera-specific target databases — **CANON**, **NIKON**, and **SONY**.
+
+This repository includes the metadata needed to reconstruct two of them:
+
+| Base | File | Flickr user |
+|------|------|-------------|
+| CANON | `Data/user_canon.csv` | [Andy E. Nystrom](https://www.flickr.com/photos/24917258@N05/) (mainly Canon PowerShot SX30 IS) |
+| NIKON | `Data/user_nikon.csv` | [NR Acampamentos](https://www.flickr.com/photos/28004289@N03/) (mainly Nikon D40) |
+
+Each list was **curated from [YFCC100M](https://multimediacommons.wordpress.com/yfcc100m-core-dataset/)** ([Thomee et al., 2016](https://doi.org/10.1145/2812802)) by selecting a **single Flickr user** who shoots with **one camera model**. See [Data/README.md](Data/README.md) for column descriptions and rebuild instructions. If you use these operational bases, please also cite [YFCC100M](#yfcc100m-upstream-metadata).
+
+The **SONY** metadata file was lost and is not shipped here. Those images originally came from [Tom's Flickr photostream](https://www.flickr.com/photos/tomstravelscom/); an equivalent base can be rebuilt from the same author using more recent Sony cameras and the same selection protocol.
 
 ## Outputs
 
@@ -198,3 +209,25 @@ The HDF5 files were built from **2,000 RAW images randomly drawn from ALASKA#2**
 ```
 
 Download the original ALASKA#2 benchmark from the [official page](https://utt.hal.science/hal-02950094).
+
+<a id="yfcc100m-upstream-metadata"></a>
+
+## YFCC100M (upstream metadata)
+
+The CANON and NIKON operational lists were curated from **YFCC100M** metadata. If you use these data, please also cite the upstream dataset:
+
+```bibtex
+@article{thomee2016yfcc100m,
+  title = {{YFCC100M}: The New Data in Multimedia Research},
+  author = {Thomee, Bart and Shamma, David A. and Friedland, Gerald and Elizalde, Benjamin and Ni, Karl and Poland, Douglas and Borth, Damian and Li, Li-Jia},
+  journal = {Communications of the {ACM}},
+  volume = {59},
+  number = {2},
+  pages = {64--73},
+  year = {2016},
+  doi = {10.1145/2812802},
+  url = {https://doi.org/10.1145/2812802}
+}
+```
+
+Download the YFCC100M metadata from the [Multimedia Commons](https://multimediacommons.wordpress.com/yfcc100m-core-dataset/) project page.

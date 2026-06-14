@@ -51,6 +51,49 @@ Sharpen kernel used in the paper (Table 1):
 
 `operational` contains **1,000** unlabeled target images used to train TADA (the paper toy protocol mentions 500; this repository keeps 1,000 operational / 1,000 eval). The remaining **1,000** images are stored under `eval` (with `pmap_eval`) and are kept disjoint from the operational set to avoid optimistic performance estimates due to overlap between training and evaluation. `pmap_ope` contains the corresponding UERD embedding probability maps used to reduce the influence of strongly modified patches during residual-statistics estimation. At training time, the code uses at most `operational.n_samples` images from the operational pool (default: `1000` in `sharpen100_bpnzac.yaml`).
 
-## Flickr / YFCC100M List
+## Operational camera bases (CANON, NIKON, SONY)
 
-`flickr_yyc100m_images.txt` is a placeholder for Flickr image identifiers from YFCC100M used in the paper's operational experiments. Replace it with the provided list if you want to reconstruct the same subset.
+The paper's operational experiments include three camera-specific target databases — **CANON**, **NIKON**, and **SONY** extracted from [YFCC100M](https://multimediacommons.wordpress.com/yfcc100m-core-dataset/) ([Thomee et al., 2016](https://doi.org/10.1145/2812802); see [upstream citation](../README.md#yfcc100m-upstream-metadata)). This folder provides the metadata needed to **reconstruct the CANON and NIKON subsets** from Flickr.
+
+### Selection criteria
+
+Each base was built with care by identifying, within [YFCC100M](https://multimediacommons.wordpress.com/yfcc100m-core-dataset/), a **single Flickr user** who consistently uses **one camera model**.
+
+### `user_canon.csv`
+
+Metadata export for the **CANON** operational base (~33k images).
+
+| Field | Role |
+|-------|------|
+| `username` | Flickr display name (`Andy E. Nystrom`) |
+| `model` | EXIF camera model (mainly **Canon PowerShot SX30 IS**) |
+| `url` | Flickr photo page |
+| `picture` | Direct image URL (download entry point) |
+
+Flickr user: [24917258@N05](https://www.flickr.com/photos/24917258@N05/)
+
+### `user_nikon.csv`
+
+Metadata export for the **NIKON** operational base (~21k images).
+
+| Field | Role |
+|-------|------|
+| `username` | Flickr display name (`NR Acampamentos`) |
+| `model` | EXIF camera model (mainly **Nikon D40**) |
+| `url` | Flickr photo page |
+| `picture` | Direct image URL |
+
+Flickr user: [28004289@N03](https://www.flickr.com/photos/28004289@N03/)
+
+### SONY base (metadata not available)
+
+The original **SONY** image list was lost and is **not** included in this repository. The images used in the paper nevertheless come from the Flickr photostream of **Tom** ([tomstravelscom](https://www.flickr.com/photos/tomstravelscom/)).
+
+It is possible to **rebuild an equivalent SONY base** from the same author by applying the same selection protocol (single user, single camera model) on more recent Sony bodies present in that photostream.
+
+### Rebuilding HDF5 targets from the CSV files
+
+1. Download JPEGs from the `picture` URLs (respect Flickr / Creative Commons licenses listed in each row).
+2. Keep only images from the paper's target camera model.
+
+The CSV column layout follows the [YFCC100M](https://multimediacommons.wordpress.com/yfcc100m-core-dataset/) metadata format; unnamed numeric columns are kept as in the original export. Please cite [YFCC100M](../README.md#yfcc100m-upstream-metadata) when using these lists.
