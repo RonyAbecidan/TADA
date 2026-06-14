@@ -11,8 +11,8 @@ Data flow (Section 3.1):
   5. Minimize the TADA loss (Section 3.4 / 4.2):
        - covariance alignment   (``lamb_cov``; geometric matching)
        - correlation alignment  (``lamb_corr``; speeds up training vs. covariance alone)
-       - Wasserstein distance   (``lamb_mmd``; distribution matching, complementary to cov/corr)
-       - realism (``dev``)          (paper: L2; here MMD on spatial patches for better practical results)
+       - Wasserstein distance   (``lamb_wasserstein``; distribution matching, complementary to cov/corr)
+       - realism (``dev``)          (paper: L2; here Wasserstein on spatial patches via ``geomloss``)
 
 Target-side patch selection uses UERD probability maps to ease the learning of the target processing pipeline.
 """
@@ -376,7 +376,7 @@ class PipelineLearner(pl.LightningModule):
         self.loss_epoch: dict[int, list[list[float]]] = {}
         self.x_min: list[float] = []
         self.x_max: list[float] = []
-        self.lamb_mmd = hyperparameters.training.lamb_mmd
+        self.lamb_wasserstein = hyperparameters.training.lamb_wasserstein
         self.lamb_corr = hyperparameters.training.lamb_corr
         self.lamb_cov = hyperparameters.training.lamb_cov
         self.folder_path = result_folder(hyperparameters)
@@ -520,15 +520,15 @@ class PipelineLearner(pl.LightningModule):
             corr_dist = dist if corr_dist is None else corr_dist + dist
         return torch.nan_to_num(corr_dist, nan=100.0)
 
-    def mmd_loss(self, source_residuals: list[torch.Tensor], target_residuals: list[torch.Tensor]) -> torch.Tensor:
-        """Wasserstein-1 / Earth Mover distance between residual patch sets (mu term).
+    def wasserstein_loss(self, source_residuals: list[torch.Tensor], target_residuals: list[torch.Tensor]) -> torch.Tensor:
+        """Wasserstein-1 / Earth Mover distance between patch sets (mu term).
 
         ``geomloss.SamplesLoss(p=1)`` implements the distributional matching term
         described in Section 3.4 of the paper.
         """
         compute_on_cpu = self.device.type == "mps"
         loss = SamplesLoss(p=1, blur=0.01, backend="online")
-        mmd_dist = None
+        wasserstein_dist = None
         feature_size = self.hyperparameters.training.patch_size_rows * self.hyperparameters.training.patch_size_columns
         for res_s, res_t in zip(source_residuals, target_residuals):
             res_s = res_s.reshape(-1, feature_size)
@@ -536,8 +536,8 @@ class PipelineLearner(pl.LightningModule):
             if compute_on_cpu:
                 res_s, res_t = res_s.cpu(), res_t.cpu()
             dist = loss(res_s, res_t)
-            mmd_dist = dist if mmd_dist is None else mmd_dist + dist
-        return mmd_dist.to(self.device) if compute_on_cpu else mmd_dist
+            wasserstein_dist = dist if wasserstein_dist is None else wasserstein_dist + dist
+        return wasserstein_dist.to(self.device) if compute_on_cpu else wasserstein_dist
 
     def on_train_epoch_start(self) -> None:
         self.train()
@@ -592,12 +592,12 @@ class PipelineLearner(pl.LightningModule):
         )
 
         losses = {
-            "mmd": self.mmd_loss(source_res, operational_res),
+            "wasserstein": self.wasserstein_loss(source_res, operational_res),
             "corr": self.corr_loss(source_res, operational_res),
             "cov": self.cov_loss(source_res, operational_res),
-            # Realism regularizer gamma: MMD on spatial patches (paper uses L2; MMD worked better in practice).
-            "dev": self.mmd_loss(source_orig, source_orig_dev),
-            "eval_mmd": self.mmd_loss(source_res, eval_res),
+            # Realism regularizer gamma: Wasserstein on spatial patches (paper uses L2; W1 worked better in practice).
+            "dev": self.wasserstein_loss(source_orig, source_orig_dev),
+            "eval_wasserstein": self.wasserstein_loss(source_res, eval_res),
             "eval_cov": self.cov_loss(source_res, eval_res),
         }
         return losses
@@ -608,19 +608,19 @@ class PipelineLearner(pl.LightningModule):
 
         if self.cpt == 0:
             # Normalize each term by its first-batch value (paper Section 4.2).
-            self.ref_mmd = losses["mmd"].detach().clamp(min=1e-8)
+            self.ref_wasserstein = losses["wasserstein"].detach().clamp(min=1e-8)
             self.ref_corr = losses["corr"].detach().clamp(min=1e-8)
             self.ref_cov = losses["cov"].detach().clamp(min=1e-8)
             self.ref_dev = losses["dev"].detach().clamp(min=1e-8)
 
         total_loss = (
             self.lamb_cov * losses["cov"] / self.ref_cov
-            + self.lamb_mmd * losses["mmd"] / self.ref_mmd
+            + self.lamb_wasserstein * losses["wasserstein"] / self.ref_wasserstein
             + self.lamb_corr * losses["corr"] / self.ref_corr
             + losses["dev"] / self.ref_dev
         )
         # Auxiliary metric on the disjoint eval split (not used for early stopping).
-        eval_loss = losses["eval_cov"] + losses["eval_mmd"]
+        eval_loss = losses["eval_cov"] + losses["eval_wasserstein"]
 
         self.log("train_loss", total_loss, prog_bar=True, on_epoch=True)
         self.log("eval_loss", eval_loss, prog_bar=True, on_epoch=True)
@@ -659,7 +659,7 @@ class PipelineLearner(pl.LightningModule):
         Correlation and realism (``dev``) are optimized during training but excluded here.
         """
         self.eval()
-        totals = {"mmd": 0.0, "cov": 0.0}
+        totals = {"wasserstein": 0.0, "cov": 0.0}
         self.loss_epoch[self.epoch_count] = []
         count = 0
         with torch.no_grad():
@@ -669,13 +669,13 @@ class PipelineLearner(pl.LightningModule):
                 eval_tensor = eval_tensor.to(self.device)
                 pmap = pmap.to(self.device)
                 losses = self._loss_terms(source, operational, eval_tensor, pmap)
-                totals["mmd"] += float(losses["mmd"].item())
+                totals["wasserstein"] += float(losses["wasserstein"].item())
                 totals["cov"] += float(losses["cov"].item())
                 count += 1
 
-        self.loss_epoch[self.epoch_count].append([count, totals["mmd"], totals["cov"]])
+        self.loss_epoch[self.epoch_count].append([count, totals["wasserstein"], totals["cov"]])
         return (
-            totals["mmd"] / float(self.ref_mmd)
+            totals["wasserstein"] / float(self.ref_wasserstein)
             + totals["cov"] / float(self.ref_cov)
         ) / max(count, 1)
 

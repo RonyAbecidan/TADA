@@ -32,8 +32,8 @@ The experiment corresponds to the toy sharpen target discussed in the paper. TAD
 
 - **covariance alignment** on KB residual patches (`lamb_cov`) — geometric matching of second-order residual structure;
 - **correlation alignment** on KB residual patches (`lamb_corr`) — we found that adding this term on top of covariance **speeds up training**;
-- **Wasserstein-1 / Earth Mover** distribution matching through `geomloss` (`lamb_mmd`) — **distribution matching** complementary to the geometric terms above;
-- **realism** (`dev`) — the paper writes an L2 term between TIF and developed images; this repository uses **MMD on spatial patches** instead, which gave **better results in practice** by preventing developed images from drifting too far from the original TIF distribution (same `8x16` tiling as the other terms).
+- **Wasserstein-1 / Earth Mover** distribution matching through `geomloss` (`lamb_wasserstein`) — **distribution matching** complementary to the geometric terms above;
+- **realism** (`dev`) — the paper writes an L2 term between TIF and developed images; this repository uses **Wasserstein matching on spatial patches** instead (via `geomloss`, same as `lamb_wasserstein`), which gave **better results in practice** by preventing developed images from drifting too far from the original TIF distribution (same `8x16` tiling as the other terms).
 
 Training reads `512x512` images from HDF5 but extracts random `256x256` crops (`im_size_source`) mainly to keep GPU memory manageable. This does not change the learning objective: every loss term is computed on randomly sampled **`8x16` patches**, not on full images. A smaller crop only reduces the local patch pool per sample; with random crop positions, many epochs, and random patch sampling each batch, the estimated residual statistics remain representative.
 

@@ -19,7 +19,7 @@ training:
     sym_constraint: True
     n_samples: 500
     qf: 100
-    lamb_mmd: 1
+    lamb_wasserstein: 1
     lamb_corr: 1
     lamb_cov: 1
     patch_size_rows: 8
