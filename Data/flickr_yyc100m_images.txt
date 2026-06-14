@@ -1,0 +1,7 @@
+# Placeholder for the Flickr / YFCC100M image list used in the paper's operational experiments.
+#
+# Replace this file with the list provided separately by the authors if you want
+# to reconstruct the same image subset.
+#
+# Suggested format, one image identifier or URL per line:
+# flickr_image_id_or_url

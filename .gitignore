@@ -1,0 +1,15 @@
+# Local experiment data
+*.h5
+*.hdf5
+targets/*.h5
+targets/*.hdf5
+
+# Training outputs
+Results/
+lightning_logs/
+
+# Python cache / editor junk
+__pycache__/
+*.py[cod]
+.DS_Store
+**/.ipynb_checkpoints/

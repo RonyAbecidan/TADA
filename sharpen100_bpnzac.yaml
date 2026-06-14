@@ -1,0 +1,33 @@
+seed: 2026
+im_size_source: 256  # random crops from 512x512 HDF5; RAM-friendly, loss uses 8x16 residual patches only
+precisions : 8_16_sharpen100_ihmm
+scenario: full_stego
+developer :
+  name: ConvDeveloper
+  args:
+    kernel_size: 3  # odd size supported; 3 for toy sharpen, 5 for operational targets in the paper
+    x_min: 0
+    x_max: 1
+residual_extractor:
+  name: KB2
+  args :
+    nothing: 0
+training:
+    source: color_raws_512.hdf5
+    target: targets/sharpen.hdf5  # resolved to targets/sharpen_full_stego.hdf5 via scenario
+    norm_constraint: True
+    sym_constraint: True
+    n_samples: 500
+    qf: 100
+    lamb_mmd: 1
+    lamb_corr: 1
+    lamb_cov: 1
+    patch_size_rows: 8
+    patch_size_columns: 16
+    n_samples_per_batch: 5000
+    max_epochs: 100
+    earlystop_patience: 200  # paper uses 200
+    lr: 0.001  # paper uses 0.001
+    batch_size: 64
+operational:
+    n_samples: 10000  

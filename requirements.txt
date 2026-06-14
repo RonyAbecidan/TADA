@@ -1,0 +1,12 @@
+# Install PyTorch separately for your CUDA stack, e.g.:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+pytorch-lightning==2.6.1
+geomloss==0.3.1
+h5py==3.16.0
+numpy==2.4.4
+PyYAML==6.0.3
+munch==4.0.0
+tqdm==4.67.3
+imageio==2.37.2
+tifffile==2026.2.16
+Pillow==9.5.0
