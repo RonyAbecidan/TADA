@@ -141,16 +141,15 @@ When `qf_reference_image` is set, the code extracts the luminance and chrominanc
 
 The paper's operational experiments use three camera-specific target databases — **CANON**, **NIKON**, and **SONY**.
 
-This repository includes the metadata needed to reconstruct two of them:
+This repository includes the metadata needed to reconstruct all three:
 
 | Base | File | Flickr user |
 |------|------|-------------|
 | CANON | `Data/user_canon.csv` | [Andy E. Nystrom](https://www.flickr.com/photos/24917258@N05/) (mainly Canon PowerShot SX30 IS) |
 | NIKON | `Data/user_nikon.csv` | [NR Acampamentos](https://www.flickr.com/photos/28004289@N03/) (mainly Nikon D40) |
+| SONY | `Data/user_sony.csv` | [Tom](https://www.flickr.com/photos/tomstravelscom/) (image links only; metadata lost) |
 
-Each list was **curated from [YFCC100M](https://multimediacommons.wordpress.com/yfcc100m-core-dataset/)** ([Thomee et al., 2016](https://doi.org/10.1145/2812802)) by selecting a **single Flickr user** who shoots with **one camera model**. See [Data/README.md](Data/README.md) for column descriptions and rebuild instructions. If you use these operational bases, please also cite [YFCC100M](#yfcc100m-upstream-metadata).
-
-The **SONY** metadata file was lost and is not shipped here. Those images originally came from [Tom's Flickr photostream](https://www.flickr.com/photos/tomstravelscom/); an equivalent base can be rebuilt from the same author using more recent Sony cameras and the same selection protocol.
+CANON, NIKON and SONY were **curated from [YFCC100M](https://multimediacommons.wordpress.com/yfcc100m-core-dataset/)** ([Thomee et al., 2016](https://doi.org/10.1145/2812802)) by selecting a **single Flickr user** who shoots with **one camera model**. For **SONY**, only the direct image URLs are available but the pictures metadata can be extracted from Flickr. See [Data/README.md](Data/README.md) for more information. If you use these operational bases, please also cite [YFCC100M](#yfcc100m-upstream-metadata).
 
 ## Outputs
 

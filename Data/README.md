@@ -1,11 +1,26 @@
-# Data Files
+# Data
 
-The training command expects the HDF5 files below. They are **gitignored** and must be downloaded from Zenodo:
+This folder documents the data used in the TADA paper. The README is organized in **two independent parts**, depending on what you want to reproduce.
+
+| Part | Goal | Where to get it |
+|------|------|-----------------|
+| **1 — Toy sharpen experiment** | Run TADA on the controlled sharpening target from the paper | HDF5 files on [Zenodo](https://doi.org/10.5281/zenodo.20688394) |
+| **2 — Operational experiments** | Rebuild the real-world Flickr camera bases (CANON, NIKON, SONY) | CSV metadata files in this folder |
+
+If you only want to **train TADA with the toy protocol** (`python pipeline_learning_config.py sharpen100_bpnzac.yaml cuda`), start with Part 1. If you want to **reproduce the operational steganalysis experiments** on Flickr images, continue to Part 2 after downloading the camera lists below.
+
+---
+
+## Part 1 — Toy sharpen experiment (Zenodo)
+
+The toy experiment is a simplified setting where the target pipeline is known in advance: images are sharpened with a fixed 3×3 kernel, JPEG-compressed at quality factor 100, and fully embedded with UERD at 1 bpnzac. TADA must learn to emulate this sharpening from a generic RAW source.
+
+The preprocessed HDF5 files are **not in git** (too large). Download them from Zenodo:
 
 **[TADA toy sharpen experiment — HDF5 training data](https://doi.org/10.5281/zenodo.20688394)**  
 DOI: [10.5281/zenodo.20688394](https://doi.org/10.5281/zenodo.20688394)
 
-Both files were **built from the same fixed pool of 2,000 RAW images randomly sampled from [ALASKA#2](https://utt.hal.science/hal-02950094)** (Cogranne, Giboulot, Bas, WIFS 2020). They are not the ALASKA#2 benchmark itself. Please cite the [Zenodo dataset](../README.md#zenodo-dataset-hdf5-files) and [ALASKA#2](../README.md#alaska2-upstream-benchmark) when using these data.
+Place the files as follows:
 
 ```text
 TADA/
@@ -14,7 +29,9 @@ TADA/
     sharpen_full_stego.hdf5
 ```
 
-## `color_raws_512.hdf5`
+Both HDF5 archives were built from the **same fixed pool of 2,000 RAW images** randomly sampled from [ALASKA#2](https://utt.hal.science/hal-02950094) (Cogranne, Giboulot, Bas, WIFS 2020). They are derivatives of ALASKA#2, not the benchmark itself. Please cite the [Zenodo dataset](../README.md#zenodo-dataset-hdf5-files) and [ALASKA#2](../README.md#alaska2-upstream-benchmark) when using these data.
+
+### `color_raws_512.hdf5` — source images
 
 Expected key:
 
@@ -22,13 +39,15 @@ Expected key:
 train
 ```
 
-This dataset contains **2,000** color TIF crops (`512x512`) from that **2,000-RAW ALASKA#2 subset** (demosaicked with `amaze`), chosen to be as spatially uniform as possible. The paper experiment shows that **500 source images are sufficient**: at training time, the code randomly samples `training.n_samples` TIFs from this pool (default: `500` in `sharpen100_bpnzac.yaml`), then extracts random **`256x256`** crops from each image (`im_size_source`) for memory reasons. TADA losses are computed on **`8x16` KB residual patches** sampled from those crops, so the crop size does not define the learning granularity.
+Contains **2,000** color TIF crops (`512×512`) from the ALASKA#2 subset above (demosaicked with `amaze`), chosen to be as spatially uniform as possible.
 
-These crops are intentionally **relatively uniform**, but not perfectly flat. Fully uniform regions would produce residuals with little discriminative power, so the selection keeps enough structure to estimate the pipeline while limiting the influence of overly textured areas during TADA training.
+At training time, the code randomly samples `training.n_samples` TIFs from this pool (default: **500** in `sharpen100_bpnzac.yaml`), then extracts random **`256×256`** crops (`im_size_source`) to limit GPU memory. Losses are computed on **`8×16` KB residual patches** sampled inside those crops — the crop size does not define the learning granularity.
 
-Once TADA has learned the pipeline, the paper builds the final steganalysis training source from the **same 2,000-RAW ALASKA#2 subset**, but using **smart crops** (ALASKA procedure) instead of uniform crops, so the developed images carry richer textures and better match operational target content.
+These crops are intentionally **relatively uniform**, but not perfectly flat: fully flat regions would carry little residual information. The selection keeps enough structure for TADA to estimate the pipeline without being dominated by highly textured content.
 
-## `targets/sharpen_full_stego.hdf5`
+After TADA training, the paper builds the final steganalysis source from the **same 2,000 RAWs**, but with **smart crops** (ALASKA procedure) instead of uniform ones, so developed images better match operational target textures.
+
+### `targets/sharpen_full_stego.hdf5` — sharpened target
 
 Expected keys:
 
@@ -39,9 +58,9 @@ eval
 pmap_eval
 ```
 
-This file corresponds to the toy sharpen target from the paper. It is built from the **same 2,000-RAW ALASKA#2 subset** (developed into `512x512` crops, converted to grayscale, sharpened with the paper kernel below, JPEG-compressed at quality factor 100, and fully embedded with UERD at 1 bpnzac, `full_stego` scenario).
+Built from the **same 2,000-RAW ALASKA#2 subset**: developed into `512×512` crops, converted to grayscale, sharpened with the kernel below, JPEG QF 100, fully embedded with UERD at 1 bpnzac (`full_stego` scenario).
 
-Sharpen kernel used in the paper (Table 1):
+Sharpen kernel (Table 1 in the paper):
 
 ```text
   0.00  -0.25   0.00
@@ -49,32 +68,39 @@ Sharpen kernel used in the paper (Table 1):
   0.00  -0.25   0.00
 ```
 
-`operational` contains **1,000** unlabeled target images used to train TADA (the paper toy protocol mentions 500; this repository keeps 1,000 operational / 1,000 eval). The remaining **1,000** images are stored under `eval` (with `pmap_eval`) and are kept disjoint from the operational set to avoid optimistic performance estimates due to overlap between training and evaluation. `pmap_ope` contains the corresponding UERD embedding probability maps used to reduce the influence of strongly modified patches during residual-statistics estimation. At training time, the code uses at most `operational.n_samples` images from the operational pool (default: `1000` in `sharpen100_bpnzac.yaml`).
+| Split | Size | Role |
+|-------|------|------|
+| `operational` + `pmap_ope` | 1,000 images | Unlabeled targets for TADA training (paper mentions 500; this repo keeps 1,000) |
+| `eval` + `pmap_eval` | 1,000 images | Held-out set, disjoint from `operational` |
 
-## Operational camera bases (CANON, NIKON, SONY)
+`pmap_ope` / `pmap_eval` are UERD embedding probability maps: they down-weight strongly modified patches when estimating residual statistics. By default, `operational.n_samples: 1000` uses the full operational pool.
 
-The paper's operational experiments include three camera-specific target databases — **CANON**, **NIKON**, and **SONY** extracted from [YFCC100M](https://multimediacommons.wordpress.com/yfcc100m-core-dataset/) ([Thomee et al., 2016](https://doi.org/10.1145/2812802); see [upstream citation](../README.md#yfcc100m-upstream-metadata)). This folder provides the metadata needed to **reconstruct the CANON and NIKON subsets** from Flickr.
+---
 
-### Selection criteria
+## Part 2 — Operational camera bases (CANON, NIKON, SONY)
 
-Each base was built with care by identifying, within [YFCC100M](https://multimediacommons.wordpress.com/yfcc100m-core-dataset/), a **single Flickr user** who consistently uses **one camera model**.
+The operational experiments use **real Flickr images** from three camera-specific databases. These are the hardest targets for TADA in the paper: each base reflects a distinct in-camera pipeline and JPEG compression habit, unlike the controlled ALASKA#2 toy setting.
 
-### `user_canon.csv`
+This folder ships **metadata lists** so you can download the same images and rebuild the operational HDF5 targets on your side. No pre-built HDF5 is provided for these bases.
 
-Metadata export for the **CANON** operational base (~33k images).
+| Base | File | Source | Flickr user |
+|------|------|--------|-------------|
+| CANON | `user_canon.csv` | [YFCC100M](https://multimediacommons.wordpress.com/yfcc100m-core-dataset/) | [Andy E. Nystrom](https://www.flickr.com/photos/24917258@N05/) |
+| NIKON | `user_nikon.csv` | [YFCC100M](https://multimediacommons.wordpress.com/yfcc100m-core-dataset/) | [NR Acampamentos](https://www.flickr.com/photos/28004289@N03/) |
+| SONY | `user_sony.csv` | Image links only (metadata lost) | [Tom](https://www.flickr.com/photos/tomstravelscom/) |
+
+CANON and NIKON lists were curated from [YFCC100M](https://multimediacommons.wordpress.com/yfcc100m-core-dataset/) ([Thomee et al., 2016](https://doi.org/10.1145/2812802)) by selecting a **single Flickr user** who consistently shoots with **one camera model**. Please cite [YFCC100M](../README.md#yfcc100m-upstream-metadata) when using these lists.
+
+### `user_canon.csv` (~33k images)
 
 | Field | Role |
 |-------|------|
 | `username` | Flickr display name (`Andy E. Nystrom`) |
 | `model` | EXIF camera model (mainly **Canon PowerShot SX30 IS**) |
 | `url` | Flickr photo page |
-| `picture` | Direct image URL (download entry point) |
+| `picture` | Direct image URL |
 
-Flickr user: [24917258@N05](https://www.flickr.com/photos/24917258@N05/)
-
-### `user_nikon.csv`
-
-Metadata export for the **NIKON** operational base (~21k images).
+### `user_nikon.csv` (~21k images)
 
 | Field | Role |
 |-------|------|
@@ -83,17 +109,20 @@ Metadata export for the **NIKON** operational base (~21k images).
 | `url` | Flickr photo page |
 | `picture` | Direct image URL |
 
-Flickr user: [28004289@N03](https://www.flickr.com/photos/28004289@N03/)
+### `user_sony.csv` (1,000 images)
 
-### SONY base (metadata not available)
+| Field | Role |
+|-------|------|
+| `id` | Flickr photo identifier |
+| `picture` | Direct image URL |
+| `url` | Flickr photo page for metadata (`https://www.flickr.com/photo.gne?id=<id>`) |
 
-The original **SONY** image list was lost and is **not** included in this repository. The images used in the paper nevertheless come from the Flickr photostream of **Tom** ([tomstravelscom](https://www.flickr.com/photos/tomstravelscom/)).
+Sony pictures are from the user "toms_travel" [Tom's photostream](https://www.flickr.com/photos/tomstravelscom/). Use the `url` field of the .csv to fetch EXIF, license, and other metadata (e.g. [photo 10560566714](https://www.flickr.com/photo.gne?id=10560566714)).
 
-It is possible to **rebuild an equivalent SONY base** from the same author by applying the same selection protocol (single user, single camera model) on more recent Sony bodies present in that photostream.
+### Getting started with the CSV files
 
-### Rebuilding HDF5 targets from the CSV files
+1. Download JPEGs from the `picture` column.
+2. Keep only images from the target camera model (for CANON and NIKON, filter on the `model` column).
+3. Make your own HDF5 to launch TADA.
 
-1. Download JPEGs from the `picture` URLs (respect Flickr / Creative Commons licenses listed in each row).
-2. Keep only images from the paper's target camera model.
-
-The CSV column layout follows the [YFCC100M](https://multimediacommons.wordpress.com/yfcc100m-core-dataset/) metadata format; unnamed numeric columns are kept as in the original export. Please cite [YFCC100M](../README.md#yfcc100m-upstream-metadata) when using these lists.
+The CANON and NIKON CSV column layout follows the [YFCC100M](https://multimediacommons.wordpress.com/yfcc100m-core-dataset/) metadata format; unnamed numeric columns are kept as in the original export.
